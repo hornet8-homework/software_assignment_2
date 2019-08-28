@@ -38,4 +38,4 @@ The simulator subscribes to the following topic (also of `std_msgs/Float64` type
 ```
 /simulator/thruster
 ```
-Publishing to this topic will allow you to control the vertical thruster on the yellow box.
+Publishing to this topic will allow you to control the vertical thruster on the orange box.
