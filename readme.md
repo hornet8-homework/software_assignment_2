@@ -2,7 +2,7 @@
 
 This is repository contains a ros package called "control_toy". This consists of a simulator that is similar to what was shown. Your job is to design a control algorithm for this simulator.
 
-DO NOT MODIFY ANYTHING IN THIS PACKAGE.
+DO NOT MODIFY "simulator.py".
 
 ## Getting the simulation up and running
 
