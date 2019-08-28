@@ -33,7 +33,7 @@ if __name__ == '__main__':
     pub_thrust = rospy.Publisher('/simulator/thruster', Float64, queue_size=10)
     """
     ==================================================================================
-    TODO: Implement your Subscriber to '/simulator/setpoint' & '/simulator/depth' here.
+    TODO: Implement your Subscribers to '/simulator/setpoint' & '/simulator/depth' here.
     Hint: They are 'Float64' type.
     ==================================================================================
     """
