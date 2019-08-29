@@ -4,6 +4,8 @@ This is repository contains a ros package called "control_toy". This consists of
 
 DO NOT MODIFY "simulator.py".
 
+Zip and email your solution to shawnlum@u.nus.edu
+
 ## Getting the simulation up and running
 
 In addition to ROS, this simulation depends on pygame. to install pygame on ubuntu you have two options. Either run:
