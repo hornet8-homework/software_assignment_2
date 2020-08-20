@@ -1,4 +1,4 @@
-# Hornet Homework 3
+# Hornet Homework 2
 
 This is repository contains a ros package called "control_toy". This consists of a simulator that is similar to what was shown. Your job is to design a control algorithm for this simulator.
 
