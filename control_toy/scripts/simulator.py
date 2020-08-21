@@ -32,7 +32,7 @@ if __name__ == '__main__':
     #Initialise Game
     pygame.init()
     screen = pygame.display.set_mode(display_size)
-    pygame.display.set_caption('Hornet Assignment 3')
+    pygame.display.set_caption('Hornet Assignment 2')
 
     #Setup ROS
     rospy.init_node("control_simulator")
