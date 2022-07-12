@@ -4,7 +4,7 @@ This repository contains a ROS package called "control_toy". This consists of a 
 
 DO NOT MODIFY "simulator.py" (but feel free to take a peek)
 
-Zip and email your solution to grajiv@u.nus.edu
+<!-- Zip and email your solution to -->
 
 ## Getting the simulation up and running
 

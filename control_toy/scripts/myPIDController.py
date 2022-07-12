@@ -1,9 +1,8 @@
 #!/usr/bin/env python
 #Ensure you are using the correct python version.
 
-import time
 import rospy
-from std_msgs.msg import Float64, Bool
+from std_msgs.msg import Float64
 
 """
 You need to complete the following 3 steps to get this script to work:
@@ -17,6 +16,7 @@ global depth
 global setpoint
 setpoint = 0
 depth = 0
+thrust = 0
 
 #Declaration of callback functions
 def SetPointCallback(msg):
@@ -38,13 +38,13 @@ if __name__ == '__main__':
     ==================================================================================
     """
     #Step 1: Add Missing Subscribers here.
-    
+
     print("Time to rock and roll")
 
     """
-    Our assumption: Distance is measured in metres and our update interval is a constant 50 ms.
-    For fun, assume that the max speed of the thruster is 8 m/s (0.4 metres per 50 ms) and that
-    our vehicle sinks at a constant 2 m/s (0.1 metres per 50 ms).
+    Our assumption: Distance is measured in metres from the surface and our update interval is a constant 50 ms.
+    Assume that the vehicle experiences an acceleration of around 2 m/s^2 downwards when fully submerged.
+    The /simulator/thruster topic takes in the desired acceleration upwards from -4 m/s^2 to 4 m/s^2. (the vehicle has a mass of 1 kg)
     """
     #Step 3: Tune your PID Controller
     KP = 0      #What Proportional value is good?
@@ -76,14 +76,11 @@ if __name__ == '__main__':
         To avoid wearing out the hypothetical thruster and save energy,
         we can stop the motor instead of propelling the equipment downwards.
         """
-        if thrust > 0.4:
-            thrust = 0.4
-        elif thrust < 0.0:
-            thrust = 0.0
+        thrust = max(min(thrust, 4), 0)
 
         pub_thrust.publish(Float64(thrust))
-        print("Depth: {0:.4f} thrust: {1:.4f}".format(round(depth, 5), round(thrust, 5)))
-        time.sleep(iteration_time)
+        rospy.loginfo("Depth: {0:.4f} thrust: {1:.4f}".format(round(depth, 5), round(thrust, 5)))
+        rospy.sleep(iteration_time)
 
     print("Shutting Down PID Controller...")
     print("Done")
