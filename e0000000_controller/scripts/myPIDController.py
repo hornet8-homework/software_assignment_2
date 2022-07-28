@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-#Ensure you are using the correct python version.
 
 import rospy
 from std_msgs.msg import Float64
@@ -11,49 +10,52 @@ You need to complete the following 3 steps to get this script to work:
 3. Tune your PID Controller
 """
 
-#declaration of global variables
+# declaration of global variables
 global depth
 global setpoint
 setpoint = 0
 depth = 0
 thrust = 0
 
-#Declaration of callback functions
+# Declaration of callback functions
+
+
 def SetPointCallback(msg):
     global setpoint
     setpoint = msg.data
+
 
 def PIDControlCallback(msg):
     global depth
     depth = msg.data
 
-#Main
+
+# Main
 if __name__ == '__main__':
     rospy.init_node('PID_Controller')
-    pub_thrust = rospy.Publisher('/simulator/thruster', Float64, queue_size=10)
+    pub_thrust = rospy.Publisher('/rocket/thruster', Float64, queue_size=10)
     """
     ==================================================================================
-    TODO: Implement your Subscribers to '/simulator/setpoint' & '/simulator/depth' here.
+    TODO: Implement your Subscribers to '/rocket/setpoint' & '/rocket/depth' here.
     Hint: They are 'Float64' type.
     ==================================================================================
     """
-    #Step 1: Add Missing Subscribers here.
+    # Step 1: Add Missing Subscribers here.
 
-    print("Time to rock and roll")
+    rospy.loginfo("Time to rock and roll")
 
     """
     Our assumption: Distance is measured in metres from the surface and our update interval is a constant 50 ms.
-    Assume that the vehicle experiences an acceleration of around 2 m/s^2 downwards when fully submerged.
-    The /simulator/thruster topic takes in the desired acceleration upwards from -4 m/s^2 to 4 m/s^2. (the vehicle has a mass of 1 kg)
+    The thruster topic takes in the desired acceleration upwards from -4 m/s^2 to 4 m/s^2. (the vehicle has a mass of 1 kg)
     """
-    #Step 3: Tune your PID Controller
-    KP = 0      #What Proportional value is good?
-    KI = 0      #What integral value is good?
-    KD = 0      #What differential value is good?
-    bias = 0    #Is a bias necessary?
+    # Step 3: Tune your PID Controller
+    KP = 0  # What Proportional value is good?
+    KI = 0  # What integral value is good?
+    KD = 0  # What differential value is good?
+    bias = 0  # Is a bias necessary?
 
-    #Declare all the variables that you need here!
-    iteration_time = 0.05 #Assume constant update intervals.
+    # Declare all the variables that you need here!
+    iteration_time = 0.05  # Assume constant update intervals.
 
     while not rospy.is_shutdown():
 
@@ -65,22 +67,17 @@ if __name__ == '__main__':
         Note that a +ve thrust is upwards while -ve thrust is downwards.
         ==================================================================================
         """
-        #Step 2: Add your PID Controller code here.
-
-
+        # Step 2: Add your PID Controller code here.
 
         """
-        Just for fun,
-        Assume that the equipment is experiencing a constant acceleration due to gravity,
-        hence, we do not need to worry about moving downwards.
+        Since the rocket is positively buoyant, we do not need to worry about moving upwards.
         To avoid wearing out the hypothetical thruster and save energy,
-        we can stop the motor instead of propelling the equipment downwards.
+        we can stop the motor instead of propelling the equipment upwards.
         """
-        thrust = max(min(thrust, 4), 0)
+        # thrust = min(thrust, 0)
 
         pub_thrust.publish(Float64(thrust))
-        rospy.loginfo("Depth: {0:.4f} thrust: {1:.4f}".format(round(depth, 5), round(thrust, 5)))
         rospy.sleep(iteration_time)
 
-    print("Shutting Down PID Controller...")
-    print("Done")
+    pub_thrust.publish(Float64(0))  # Stop vehicle before exiting
+    rospy.loginfo("Shutting Down PID Controller...")
