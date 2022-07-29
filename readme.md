@@ -24,7 +24,7 @@ pip3 install pygame (ROS Noetic)
 To run the simulator, add `control_toy` to your workspace, build the catkin workspace then run:
 
 ```bash
-rosrun control_toy simulator.py __ns:=rocket
+rosrun control_toy simulator.py
 ```
 
 

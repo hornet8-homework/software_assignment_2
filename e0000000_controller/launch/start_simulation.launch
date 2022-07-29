@@ -1,5 +1,8 @@
 <launch>
     <arg name="robot_name" default="rocket" />
-    <node pkg="control_toy" type="simulator.py" name="simulation" output="screen" ns="$(arg robot_name)"/>
+    <node pkg="control_toy" type="simulator.py" name="simulation" output="screen">
+        <param name="vehicle" value="$(arg robot_name)" />
+        <param name="gui" value="true"/>
+    </node>
     <node pkg="e0000000_controller" type="myPIDController.py" name="controller" output="screen" ns="$(arg robot_name)"/>
 </launch>

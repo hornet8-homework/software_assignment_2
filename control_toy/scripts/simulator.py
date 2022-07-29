@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import pygame
 import rospy
 import os
 import cv2
@@ -17,15 +16,10 @@ time_interval = 0.05
 
 display_offset = 40
 display_scale = 30
-setpoint = 5
 tolerance = 0.2
 display_size = (250, 560)
-thruster = 0
-vehicle_width = 0.2
-vehicle_height = 0.6
 max_depth = 15
 drag_coefficient = 3
-vehicle_mass = 1
 gravity = 9.81
 fluid_density = 41.6666666667 * (gravity + 2) / gravity
 
@@ -38,7 +32,7 @@ setpoint_service_name = "update_setpoint"
 
 
 class Camera:
-    def __init__(self):
+    def __init__(self, namespace):
         """Simulates the camera of the rocket."""
         file_path = os.path.realpath(os.path.dirname(__file__))
         img = cv2.imread(file_path + "/../bg.jpg")
@@ -65,7 +59,8 @@ class Camera:
         self.bg = bg
         self.overlay = overlay
         self.bridge = CvBridge()
-        self.pub = rospy.Publisher(camera_topic, Image, queue_size=1)
+        self.pub = rospy.Publisher(
+            "/{}/{}".format(namespace, camera_topic), Image, queue_size=1)
 
     def make_poly(sides):
         """Creates a polygon centered at (0, 0)"""
@@ -154,104 +149,127 @@ class Motion:
         return self.y
 
 
-motion = Motion(
-    y=0, vy=0, drag_coeff=drag_coefficient, mass=vehicle_mass, fluid_density=fluid_density,
-    gravity=gravity, height=vehicle_height, width=vehicle_width, dt=time_interval, env_depth=max_depth,
-    thrust_limit=10
-)
-camera = Camera()
+class Vehicle:
+    def __init__(self, name):
+        self.name = name
+        self.setpoint = 5
+        self.thruster = 0
+        self.vehicle_width = 0.2
+        self.vehicle_height = 0.6
+        self.vehicle_mass = 1
+        self.motion = motion = Motion(
+            y=0, vy=0, drag_coeff=drag_coefficient, mass=self.vehicle_mass, fluid_density=fluid_density,
+            gravity=gravity, height=self.vehicle_height, width=self.vehicle_width, dt=time_interval, env_depth=max_depth,
+            thrust_limit=10
+        )
+        self.camera = Camera(name)
 
+        self.pub_depth = rospy.Publisher("/{}/{}".format(self.name, depth_topic), Float64, queue_size=10)
+        self.pub_setpoint = rospy.Publisher(
+            "/{}/{}".format(self.name, setpoint_topic), Float64, queue_size=10)
+        rospy.Subscriber("/{}/{}".format(self.name, thruster_topic),
+                         Float64, self.vertical_callback)
+        self.setpoint_service = rospy.Service(
+            "/{}/{}".format(self.name, setpoint_service_name), UpdateSetpoint, self.update_setpoint)
 
-def vertical_callback(msg):
-    global thruster
-    thruster = min(4, max(-4, msg.data))
-    rospy.loginfo_throttle(5, "thrust: {0:.4f}".format(thruster))
+        rospy.Timer(rospy.Duration.from_sec(
+            0.1), lambda e: self.camera.publish_camera_image(self.motion.getPosition()))
 
+        self.count_within_threshold = 0
 
-def getY(depth):
-    """Get the y position of a given depth in the screen"""
-    return depth * display_scale + display_offset
+    def vertical_callback(self, msg):
+        self.thruster = min(4, max(-4, msg.data))
+        rospy.loginfo_throttle(
+            5, "{} thrust: {}".format(self.name, self.thruster))
 
+    def update(self):
+        self.depth = self.motion.getPosition()
+        # Publish telemetry
+        self.pub_depth.publish(Float64(self.depth))
+        self.pub_setpoint.publish(Float64(self.setpoint))
+        if not self.reached_goal():
+            self.count_within_threshold = 0
+        else:
+            self.count_within_threshold += 1
+        if self.count_within_threshold == 40:
+            rospy.loginfo("reached depth={:.2f} in {:.2f} seconds".format(
+                self.setpoint, rospy.get_time() - start_time))
+        self.motion.update(self.thruster)
 
-def update_setpoint(depth):
-    global setpoint
-    rospy.loginfo_throttle_identical(
-        5, "Received new setpoint: {0:.4f}".format(depth))
-    setpoint = depth.new_setpoint
-    return UpdateSetpointResponse(True)
+    def reached_goal(self):
+        return (abs(self.depth - self.setpoint) < tolerance)
 
+    def getY(self, depth):
+        """Get the y position of a given depth in the screen"""
+        return depth * display_scale + display_offset
 
-count_within_threshold = 0
+    def update_setpoint(self, depth):
+        self.setpoint = depth
+        self.setpoint = depth.new_setpoint
+        return UpdateSetpointResponse(True)
+
+    def draw(self):
+        pygame.draw.rect(screen, (230, 126, 34), (w / 2, self.getY(self.depth),
+                                                  self.vehicle_width * display_scale, self.vehicle_height * display_scale), 0)
+        pygame.draw.lines(screen, setPointLineColour, False,
+                          ((0, self.getY(self.setpoint)), (w, self.getY(self.setpoint))), 3)
+
 
 # Main
 if __name__ == '__main__':
-    # Initialise Game
-    pygame.init()
-    screen = pygame.display.set_mode(display_size)
-    pygame.display.set_caption('Control Toy')
 
     # Setup ROS
     rospy.init_node("control_simulator", log_level=rospy.INFO)
 
-    rospy.on_shutdown(pygame.quit)
-    pub_depth = rospy.Publisher(depth_topic, Float64, queue_size=10)
-    pub_setpoint = rospy.Publisher(setpoint_topic, Float64, queue_size=10)
-    rospy.Subscriber(thruster_topic,
-                     Float64, vertical_callback)
+    gui = rospy.get_param("~gui", True)
+    if gui:
+        try:
+            import pygame
+            # Initialise Game
+            pygame.init()
+            screen = pygame.display.set_mode(display_size)
+            pygame.display.set_caption('Control Toy')
+            rospy.on_shutdown(pygame.quit)
+            surface = pygame.display.get_surface()
+        except:
+            rospy.logerr("Could not import pygame, GUI disabled")
+            gui = False
 
-    sepoint_service = rospy.Service(
-        setpoint_service_name, UpdateSetpoint, update_setpoint)
     running = True
-    surface = pygame.display.get_surface()
     start_time = rospy.get_time()
 
-    timer = rospy.Timer(rospy.Duration.from_sec(
-        0.1), lambda e: camera.publish_camera_image(motion.getPosition()))
+    vehicle = Vehicle(rospy.get_param("~vehicle", "rocket"))
+
+    blue = (41, 128, 185)
+    green = (46, 204, 113)
+    red = (231, 76, 60)
 
     # Primary loop
     while running and not rospy.is_shutdown():
-        depth = motion.getPosition()
-
-        # Publish telemetry
-        pub_depth.publish(Float64(depth))
-        pub_setpoint.publish(Float64(setpoint))
+        vehicle.update()
 
         # Draw
-        reached_goal = (abs(depth - setpoint) < tolerance)
-        setPointLineColour = (46, 204, 113) if reached_goal else (231, 76, 60)
-        if not reached_goal:
-            count_within_threshold = 0
-        else:
-            count_within_threshold += 1
-        if count_within_threshold == 40:
-            rospy.loginfo("reached depth={:.2f} in {:.2f} seconds".format(
-                setpoint, rospy.get_time() - start_time))
+        setPointLineColour = green if vehicle.reached_goal() else red
+        if gui:
+            screen.fill((0, 0, 0))
+            w, h = surface.get_width(), surface.get_height()
+            pygame.draw.rect(screen, blue, (0, vehicle.getY(0), w, vehicle.getY(
+                max_depth + vehicle.vehicle_height) - display_offset), 0)  # water
+            pygame.draw.rect(screen, (255, 255, 255),
+                    (0, 0, w, vehicle.getY(0)), 0)  # water surface
+            vehicle.draw()
+            pygame.display.update()
 
-        screen.fill((0, 0, 0))
-        w, h = surface.get_width(), surface.get_height()
-        pygame.draw.rect(screen, (255, 255, 255),
-                         (0, 0, w, getY(0)), 0)  # water surface
-        pygame.draw.rect(screen, (41, 128, 185), (0, getY(0), w, getY(
-            max_depth + vehicle_height) - display_offset), 0)  # water
-        pygame.draw.rect(screen, (230, 126, 34), (w / 2, getY(depth),
-                                                  vehicle_width * display_scale, vehicle_height * display_scale), 0)
-        pygame.draw.lines(screen, setPointLineColour, False,
-                          ((0, getY(setpoint)), (w, getY(setpoint))), 3)
-        pygame.display.update()
-
-        # Business Logic
-        motion.update(thruster)
-
-        # Handle user input
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                running = False
-            if event.type == pygame.MOUSEBUTTONUP:
-                pos = pygame.mouse.get_pos()
-                setpoint = Motion.constrain(
-                    (pos[1] - display_offset) / display_scale, 0, max_depth)
-                start_time = rospy.get_time()
-                count = 0
+            # Handle user input
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    running = False
+                if event.type == pygame.MOUSEBUTTONUP:
+                    pos = pygame.mouse.get_pos()
+                    vehicle.setpoint = Motion.constrain(
+                        (pos[1] - display_offset) / display_scale, 0, max_depth)
+                    start_time = rospy.get_time()
+                    count = 0
 
         # Sleep
         rospy.sleep(time_interval)

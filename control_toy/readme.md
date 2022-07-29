@@ -4,15 +4,12 @@ This repository contains a ROS package called "control_toy".
 
 ## Getting the simulation up and running
 
-In addition to ROS, this simulation depends on pygame. to install pygame on ubuntu you have two options. Either run:
+In addition to ROS, this simulation depends on pygame to display the gui.
+Enabling the pygame gui is optional but useful for debugging.
+To install pygame on ubuntu, run any one of the following lines:
 
 ```bash
 sudo apt install python-pygame
-```
-
-or
-
-```bash
 pip install pygame # (ROS Melodic)
 pip3 install pygame # (ROS Noetic)
 ```
@@ -20,10 +17,10 @@ pip3 install pygame # (ROS Noetic)
 To run the simulator, build the `control_toy` package, then run:
 
 ```bash
-rosrun control_toy simulator.py __ns:=rocket
+rosrun control_toy simulator.py _vehicle:=rocket _gui:=true
 ```
 
-This will start the simulation containing the vehicle, and create the pygame gui.
+This will start the simulation containing the vehicle, and create the pygame gui if _gui:=true.
 
 ## Using the simulator
 
